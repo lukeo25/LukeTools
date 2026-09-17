@@ -2,6 +2,15 @@
 
 This folder contains the unpacked Chrome extension version of LukeTools.
 
+## Supported Wick Editor builds
+
+LukeTools is configured to load automatically on:
+
+- https://www.wickeditor.com/editor/
+- https://wickeditor.com/editor/
+- https://candlestickers.app/
+- https://stickmanred.github.io/wick-editor/
+
 ## Install
 
 1. Download or clone this repository.
@@ -9,7 +18,7 @@ This folder contains the unpacked Chrome extension version of LukeTools.
 3. Turn on **Developer mode**.
 4. Click **Load unpacked**.
 5. Select this `chrome-extension` folder.
-6. Open Wick Editor at `https://www.wickeditor.com/editor/`.
+6. Open any supported Wick Editor build.
 7. LukeTools should load automatically.
 
 ## Architecture
@@ -24,4 +33,4 @@ After changing extension files:
 
 1. Open `chrome://extensions`.
 2. Click **Reload** on LukeTools.
-3. Refresh Wick Editor.
+3. Refresh the Wick Editor tab.
