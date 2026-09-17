@@ -1,18 +1,22 @@
 {
   "manifest_version": 3,
   "name": "LukeTools for Wick Editor",
-  "version": "0.1.0",
-  "description": "Loads the LukeTools panel automatically inside Wick Editor.",
+  "version": "0.1.1",
+  "description": "Loads the LukeTools panel automatically inside supported Wick Editor builds.",
   "host_permissions": [
     "https://www.wickeditor.com/editor/*",
     "https://wickeditor.com/editor/*",
+    "https://candlestickers.app/*",
+    "https://stickmanred.github.io/wick-editor/*",
     "https://raw.githubusercontent.com/*"
   ],
   "content_scripts": [
     {
       "matches": [
         "https://www.wickeditor.com/editor/*",
-        "https://wickeditor.com/editor/*"
+        "https://wickeditor.com/editor/*",
+        "https://candlestickers.app/*",
+        "https://stickmanred.github.io/wick-editor/*"
       ],
       "js": [
         "luketools-bridge.js"
