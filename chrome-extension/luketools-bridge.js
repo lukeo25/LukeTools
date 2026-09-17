@@ -1,9 +1,11 @@
 // ==UserScript==
 // @name         Luke Tools Local Panel Bridge
-// @version      2.8.13
+// @version      2.8.14
 // @description  Draggable Luke Tools panel, launcher button, tool loader, and a generic bridge for selection, clips, assets, scripts, and transform edits
 // @match        https://www.wickeditor.com/editor/*
 // @match        https://wickeditor.com/editor/*
+// @match        https://candlestickers.app/*
+// @match        https://stickmanred.github.io/wick-editor/*
 // @grant        none
 // ==/UserScript==
 
