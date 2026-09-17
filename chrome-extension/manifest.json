@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LukeTools for Wick Editor",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Loads the LukeTools panel automatically inside supported Wick Editor builds.",
   "host_permissions": [
     "https://www.wickeditor.com/editor/*",
@@ -10,6 +10,21 @@
     "https://stickmanred.github.io/wick-editor/*",
     "https://raw.githubusercontent.com/*"
   ],
+  "action": {
+    "default_title": "LukeTools",
+    "default_icon": {
+      "16": "icons/LukeTools-icon.png",
+      "32": "icons/LukeTools-icon.png",
+      "48": "icons/LukeTools-icon.png",
+      "128": "icons/LukeTools-icon.png"
+    }
+  },
+  "icons": {
+    "16": "icons/LukeTools-icon.png",
+    "32": "icons/LukeTools-icon.png",
+    "48": "icons/LukeTools-icon.png",
+    "128": "icons/LukeTools-icon.png"
+  },
   "content_scripts": [
     {
       "matches": [
