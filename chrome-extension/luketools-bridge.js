@@ -1106,19 +1106,36 @@ function installDemBonesMrk2Host(host, html) {
     ));
     var hit = scope.project.hitTest(point, { fill: true, stroke: true, segments: false, tolerance: 5 / (view.zoom || 1),
       match: function (h) { return !(h.item && h.item.data && h.item.data.wickType === 'gui'); } });
-    if (!hit) return null;
     var cache = host.Wick && host.Wick.ObjectCache;
-    for (var item = hit.item; item; item = item.parent) {
-      var uuid = item.data && item.data.wickUUID;
-      var object = uuid && cache && cache.getObjectByUUID(uuid);
-      var rig = service.findRig(object);
-      if (rig) return rig;
+    if (hit) {
+      for (var item = hit.item; item; item = item.parent) {
+        var uuid = item.data && item.data.wickUUID;
+        var object = uuid && cache && cache.getObjectByUUID(uuid);
+        var rig = service.findRig(object);
+        if (rig) return rig;
+      }
     }
-    return null;
+    // A DemBones object may contain transparent space between its curves.
+    // Treat every double-click inside its complete stage bounds as a reopen.
+    var candidates = [];
+    var items = scope.project.getItems ? scope.project.getItems({
+      match: function (candidate) { return !!(candidate && candidate.data && candidate.data.wickUUID); }
+    }) : [];
+    items.forEach(function (candidate) {
+      try {
+        if (!candidate.bounds || !candidate.bounds.contains(point)) return;
+        var candidateObject = cache && cache.getObjectByUUID(candidate.data.wickUUID);
+        var candidateRig = service.findRig(candidateObject);
+        if (!candidateRig) return;
+        candidates.push({ rig: candidateRig, area: Math.abs(candidate.bounds.width * candidate.bounds.height) });
+      } catch (e) {}
+    });
+    candidates.sort(function (a, b) { return a.area - b.area; });
+    return candidates.length ? candidates[0].rig : null;
   };
   service.handle = function (event) {
     if (event.type === 'mousedown' && event.detail !== 2) return;
-    if (event.button !== 0 || event.altKey) return;
+    if (event.button !== 0) return;
     var rig;
     try { rig = service.hit(event); } catch (e) { return; }
     if (!rig) return;
