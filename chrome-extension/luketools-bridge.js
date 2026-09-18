@@ -1083,6 +1083,7 @@ function installDemBonesMrk2Host(host, html) {
       return true;
     }).catch(function (error) {
       service.opening = false;
+      service.pending = null;
       host.URL.revokeObjectURL(url);
       host.console.error('DemBonesMrk2 could not open', error);
       return false;
