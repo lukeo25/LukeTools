@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Luke Tools Local Panel Bridge
-// @version      2.8.14
+// @version      2.8.15
 // @description  Draggable Luke Tools panel, launcher button, tool loader, and a generic bridge for selection, clips, assets, scripts, and transform edits
 // @match        https://www.wickeditor.com/editor/*
 // @match        https://wickeditor.com/editor/*
@@ -70,6 +70,12 @@
     var STORAGE_SEL_UUID = "LukeToolsSelectedClipUUID";
     var STORAGE_SEL_IDENTIFIER = "LukeToolsSelectedClipIdentifier";
 
+    function clearStoredSelection() {
+        try { localStorage.removeItem(STORAGE_SEL_NAME); } catch (e1) { }
+        try { localStorage.removeItem(STORAGE_SEL_UUID); } catch (e2) { }
+        try { localStorage.removeItem(STORAGE_SEL_IDENTIFIER); } catch (e3) { }
+    }
+
 
 
     var RUNTIME_KEY = "LukeToolsRuntime";
@@ -82,10 +88,19 @@
 
         rt = {
             ok: true,
-            version: "2.8.9",
+            version: "2.8.15",
             killed: false,
+            cleanups: [],
+            addCleanup: function (fn) {
+                if (typeof fn === "function") this.cleanups.push(fn);
+            },
             kill: function () {
                 try { this.killed = true; } catch (e1) { }
+                var list = [];
+                try { list = this.cleanups.splice(0); } catch (e2) { list = []; }
+                for (var i = 0; i < list.length; i += 1) {
+                    try { list[i](); } catch (e3) { }
+                }
             }
         };
 
@@ -1183,9 +1198,7 @@ Bridge.openDemBonesMrk2 = function () { return dbm2Host.open(); };
         try {
             var info = selectionInfo();
             if (!info || !info.ok) {
-                try { localStorage.removeItem(STORAGE_SEL_NAME); } catch (e1) { }
-                try { localStorage.removeItem(STORAGE_SEL_UUID); } catch (e2) { }
-                try { localStorage.removeItem(STORAGE_SEL_IDENTIFIER); } catch (e3) { }
+                clearStoredSelection();
                 return { ok: false, reason: "nothing selected" };
             }
 
@@ -4607,11 +4620,204 @@ if (data.type === "LukeToolsRunJsonTool") {
         try { obs.observe(document.documentElement, { childList: true, subtree: true }); } catch (e2) { }
     }
 
+    // Wick replaces its Project instance for New Project, Open Project, and Reset.
+    // Keep the bridge alive, but discard every reference that belongs to the old Project.
+    var PROJECT_CHANGE_EVENT = "LukeToolsProjectChanged";
+    var projectLifecycle = {
+        project: null,
+        candidate: null,
+        candidateSince: 0,
+        generation: 0,
+        intervalId: 0,
+        started: false
+    };
+
+    function projectSummary(project) {
+        var out = { name: "", uuid: "", width: null, height: null };
+        if (!project) return out;
+        try { out.name = s(project.name || project._name || ""); } catch (e1) { }
+        try { out.uuid = s(project.uuid || project._uuid || project.identifier || ""); } catch (e2) { }
+        try { if (typeof project.width === "number") out.width = project.width; } catch (e3) { }
+        try { if (typeof project.height === "number") out.height = project.height; } catch (e4) { }
+        return out;
+    }
+
+    function publishProjectChange(previousProject, nextProject, reason) {
+        var detail = {
+            generation: projectLifecycle.generation,
+            reason: reason || "project-replaced",
+            previousProject: previousProject || null,
+            project: nextProject || null,
+            previous: projectSummary(previousProject),
+            current: projectSummary(nextProject)
+        };
+
+        // Same-window tools can synchronously release old Project/object references here.
+        try { window.dispatchEvent(new CustomEvent(PROJECT_CHANGE_EVENT, { detail: detail })); } catch (e1) { }
+
+        // Iframe tools can use this notification when they do not subscribe on parent.
+        var message = {
+            type: PROJECT_CHANGE_EVENT,
+            generation: detail.generation,
+            reason: detail.reason,
+            previous: detail.previous,
+            current: detail.current
+        };
+        var frameIds = [PANEL_IFRAME_ID, OVERLAY_IFRAME_ID, GAMESPRITE_PANEL_IFRAME_ID];
+        for (var i = 0; i < frameIds.length; i += 1) {
+            try {
+                var frame = document.getElementById(frameIds[i]);
+                if (frame && frame.contentWindow) frame.contentWindow.postMessage(message, "*");
+            } catch (e2) { }
+        }
+    }
+
+    function clearProjectBoundToolState() {
+        clearStoredSelection();
+
+        try {
+            var dbm2 = window.DemBonesMrk2Host;
+            if (dbm2) {
+                dbm2.pending = null;
+                dbm2.panel = null;
+                dbm2.opening = false;
+                dbm2.lastOpen = 0;
+            }
+        } catch (e1) { }
+
+        try {
+            var gizmo = window.LukeToolsFrameGizmoHost;
+            if (gizmo) {
+                gizmo.pending = null;
+                gizmo.panel = null;
+                gizmo.opening = false;
+                gizmo.lastOpen = 0;
+            }
+        } catch (e2) { }
+
+        try { closeGameSpritePanel(); } catch (e3) { }
+        try {
+            var gamePanel = document.getElementById(GAMESPRITE_PANEL_ID);
+            if (gamePanel && gamePanel.parentNode) gamePanel.parentNode.removeChild(gamePanel);
+        } catch (e4) { }
+
+        try { closeFullscreen(); } catch (e5) { }
+        try { lastLoaded = { name: "", htmlDoc: "" }; } catch (e6) { }
+
+        // Destroy the active tool iframe so it cannot continue writing to the old Project.
+        // The LukeTools panel itself stays mounted and returns to its normal tool menu.
+        try {
+            ensurePanel();
+            if (window.__LT_showIconPanelNow) window.__LT_showIconPanelNow();
+        } catch (e7) { }
+        try { resetPanelSizeToDefault(); } catch (e8) { }
+        try { setTimeout(function () {
+            try {
+                ensureLauncher(showPanel);
+                __LT_updateGameSpriteToggleVisibility();
+                if (window.__LT_showIconPanelNow) window.__LT_showIconPanelNow();
+            } catch (e9) { }
+        }, 0); } catch (e10) { }
+    }
+
+    function acceptProjectChange(nextProject, reason) {
+        if (!nextProject || nextProject === projectLifecycle.project) return false;
+
+        var previousProject = projectLifecycle.project;
+        projectLifecycle.project = nextProject;
+        projectLifecycle.candidate = null;
+        projectLifecycle.candidateSince = 0;
+
+        if (!previousProject) {
+            return false;
+        }
+
+        projectLifecycle.generation += 1;
+        publishProjectChange(previousProject, nextProject, reason || "project-replaced");
+        clearProjectBoundToolState();
+        log("[LukeTools] Wick project changed; rebound to generation", projectLifecycle.generation);
+        return true;
+    }
+
+    function pollForProjectChange() {
+        if (isKilled()) return;
+
+        var currentProject = null;
+        try { currentProject = getProject(); } catch (e1) { currentProject = null; }
+        if (!currentProject) {
+            projectLifecycle.candidate = null;
+            projectLifecycle.candidateSince = 0;
+            return;
+        }
+
+        if (!projectLifecycle.project) {
+            projectLifecycle.project = currentProject;
+            projectLifecycle.candidate = null;
+            return;
+        }
+
+        if (currentProject === projectLifecycle.project) {
+            projectLifecycle.candidate = null;
+            projectLifecycle.candidateSince = 0;
+            return;
+        }
+
+        if (currentProject !== projectLifecycle.candidate) {
+            projectLifecycle.candidate = currentProject;
+            projectLifecycle.candidateSince = nowMs();
+            return;
+        }
+
+        // Require the replacement to remain stable across polling ticks. This avoids
+        // binding to a short-lived Project while a fork is still importing/resetting.
+        if (nowMs() - projectLifecycle.candidateSince < 100) return;
+        acceptProjectChange(currentProject, "project-replaced");
+    }
+
+    function startProjectLifecycleWatcher() {
+        if (projectLifecycle.started) return;
+        projectLifecycle.started = true;
+        pollForProjectChange();
+        projectLifecycle.intervalId = window.setInterval(pollForProjectChange, 250);
+
+        var rt = ensureRuntime();
+        if (rt && typeof rt.addCleanup === "function") {
+            rt.addCleanup(function () {
+                if (projectLifecycle.intervalId) window.clearInterval(projectLifecycle.intervalId);
+                projectLifecycle.intervalId = 0;
+                projectLifecycle.started = false;
+            });
+        }
+    }
+
+    Bridge.PROJECT_CHANGE_EVENT = PROJECT_CHANGE_EVENT;
+    Bridge.getProjectGeneration = function () {
+        return projectLifecycle.generation;
+    };
+    Bridge.getProjectLifecycle = function () {
+        return {
+            generation: projectLifecycle.generation,
+            current: projectSummary(projectLifecycle.project),
+            watching: !!projectLifecycle.started
+        };
+    };
+    Bridge.rebindToCurrentProject = function () {
+        var currentProject = getProject();
+        if (!currentProject) return { ok: false, reason: "project missing" };
+        if (currentProject === projectLifecycle.project) {
+            return { ok: true, changed: false, generation: projectLifecycle.generation };
+        }
+        var changed = acceptProjectChange(currentProject, "manual-rebind");
+        return { ok: true, changed: changed, generation: projectLifecycle.generation };
+    };
+
     setTimeout(function () {
         ensurePanel();
         hidePanel();
         mountLauncherOrObserve();
         ensureOverlay();
     }, 1200);
+
+    startProjectLifecycleWatcher();
 
 })();
