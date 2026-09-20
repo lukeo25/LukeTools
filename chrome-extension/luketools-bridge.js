@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Luke Tools Local Panel Bridge
-// @version      2.8.15
+// @version      2.8.16
 // @description  Draggable Luke Tools panel, launcher button, tool loader, and a generic bridge for selection, clips, assets, scripts, and transform edits
 // @match        https://www.wickeditor.com/editor/*
 // @match        https://wickeditor.com/editor/*
@@ -2910,6 +2910,19 @@ function removeLauncher() {
             });
             setInterval(function () { // FIX: keep aligned even when layout changes
                 var b2 = document.getElementById(LAUNCHER_ID);
+                // New/Open/Reset can make Wick rebuild the toolbar after the
+                // project-change callback has already run. Recreate the launcher
+                // whenever that later React render removes it.
+                if (!b2 && getDockNode()) {
+                    ensureLauncher(showPanel);
+                    b2 = document.getElementById(LAUNCHER_ID);
+                    try {
+                        var activePanel = document.getElementById(PANEL_ID);
+                        if (b2 && activePanel && activePanel.style.display === "block") {
+                            b2.style.display = "none";
+                        }
+                    } catch (eR0) { }
+                }
                 if (b2) __LT_syncLauncherPosition(b2);
                 __LT_updateGameSpriteToggleVisibility(); // FIX
                 __LT_positionGameSpritePanel(); // FIX
