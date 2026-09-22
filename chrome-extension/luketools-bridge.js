@@ -75,8 +75,33 @@
         try { localStorage.removeItem(STORAGE_SEL_UUID); } catch (e2) { }
         try { localStorage.removeItem(STORAGE_SEL_IDENTIFIER); } catch (e3) { }
     }
+//////
+   document.addEventListener("keydown", function (event) {
+    if (
+        event.ctrlKey &&
+        event.shiftKey &&
+        event.key.toLowerCase() === "l"
+    ) {
+        event.preventDefault();
+        event.stopPropagation();
 
+        if (typeof window.openLukeTools === "function") {
+            window.openLukeTools();
+            return;
+        }
 
+        if (
+            window.parent &&
+            typeof window.parent.openLukeTools === "function"
+        ) {
+            window.parent.openLukeTools();
+            return;
+        }
+
+        console.warn("[LukeTools] Ctrl+Shift+L pressed, but LukeTools opener was not found.");
+    }
+}, true); 
+//////
 
     var RUNTIME_KEY = "LukeToolsRuntime";
 
