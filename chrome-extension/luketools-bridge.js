@@ -75,54 +75,153 @@
         try { localStorage.removeItem(STORAGE_SEL_UUID); } catch (e2) { }
         try { localStorage.removeItem(STORAGE_SEL_IDENTIFIER); } catch (e3) { }
     }
-//////
-document.addEventListener("keydown", function (event) {
-    if (
-        event.ctrlKey &&
-        event.shiftKey &&
-        event.key.toLowerCase() === "l"
-    ) {
-        console.log("[LukeTools Shortcut] Ctrl+Shift+L detected");
+//////Short Cut
+(function installLukeToolsShortcut() {
+    if (window.__LukeToolsShortcutInstalled) {
+        console.log("[LukeTools Shortcut] Existing listener already installed");
+        return;
+    }
 
-        event.preventDefault();
-        event.stopPropagation();
+    window.__LukeToolsShortcutInstalled = true;
 
-        const buttons = Array.from(
-            document.querySelectorAll("button, [role='button'], [title], [aria-label]")
+    function findLukeToolsControl(root) {
+        if (!root || !root.querySelectorAll) {
+            return null;
+        }
+
+        const elements = Array.from(
+            root.querySelectorAll(
+                "button, [role='button'], [title], [aria-label], [data-tooltip], [class*='tab'], [class*='button']"
+            )
         );
 
-        const lukeToolsButton = buttons.find(function (el) {
-            const text = (
-                (el.innerText || "") + " " +
-                (el.getAttribute("title") || "") + " " +
-                (el.getAttribute("aria-label") || "")
-            ).toLowerCase();
+        for (const el of elements) {
+            const combined = [
+                el.innerText || "",
+                el.textContent || "",
+                el.getAttribute("title") || "",
+                el.getAttribute("aria-label") || "",
+                el.getAttribute("data-tooltip") || "",
+                el.id || "",
+                el.className || ""
+            ]
+                .join(" ")
+                .toLowerCase();
 
-            return text.includes("luketools") || text.includes("luke tools");
-        });
+            if (
+                combined.includes("luketools") ||
+                combined.includes("luke tools")
+            ) {
+                return el;
+            }
+        }
 
-        if (lukeToolsButton) {
+        return null;
+    }
+
+    function openLukeToolsPanel() {
+        console.log("[LukeTools Shortcut] Looking for LukeTools control");
+
+        let control = findLukeToolsControl(document);
+
+        if (control) {
             console.log(
-                "[LukeTools Shortcut] LukeTools button found:",
-                lukeToolsButton
+                "[LukeTools Shortcut] Found control in current document:",
+                control
             );
 
-            lukeToolsButton.click();
+            control.click();
 
-            console.log(
-                "[LukeTools Shortcut] LukeTools button clicked"
-            );
+            console.log("[LukeTools Shortcut] Clicked LukeTools control");
 
-            return;
+            return true;
+        }
+
+        const frames = Array.from(document.querySelectorAll("iframe"));
+
+        console.log(
+            "[LukeTools Shortcut] Searching",
+            frames.length,
+            "iframe(s)"
+        );
+
+        for (let i = 0; i < frames.length; i++) {
+            try {
+                const frameDocument =
+                    frames[i].contentDocument ||
+                    frames[i].contentWindow.document;
+
+                control = findLukeToolsControl(frameDocument);
+
+                if (control) {
+                    console.log(
+                        "[LukeTools Shortcut] Found control inside iframe",
+                        i,
+                        control
+                    );
+
+                    control.click();
+
+                    console.log(
+                        "[LukeTools Shortcut] Clicked LukeTools iframe control"
+                    );
+
+                    return true;
+                }
+            } catch (error) {
+                console.log(
+                    "[LukeTools Shortcut] Cannot inspect iframe",
+                    i,
+                    error
+                );
+            }
         }
 
         console.warn(
-            "[LukeTools Shortcut] Could not find the LukeTools panel button"
+            "[LukeTools Shortcut] LukeTools UI control was not found"
         );
-    }
-}, true);
 
-console.log("[LukeTools Shortcut] Ctrl+Shift+L listener installed");
+        return false;
+    }
+
+    function handleLukeToolsShortcut(event) {
+        console.log(
+            "[LukeTools Shortcut] keydown",
+            event.key,
+            event.code,
+            "ctrl:",
+            event.ctrlKey,
+            "shift:",
+            event.shiftKey
+        );
+
+        if (
+            event.ctrlKey &&
+            event.shiftKey &&
+            event.code === "KeyL"
+        ) {
+            console.log(
+                "[LukeTools Shortcut] Ctrl+Shift+L detected"
+            );
+
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+
+            openLukeToolsPanel();
+        }
+    }
+
+    document.addEventListener(
+        "keydown",
+        handleLukeToolsShortcut,
+        true
+    );
+
+    console.log(
+        "[LukeTools Shortcut] Ctrl+Shift+L panel shortcut installed"
+    );
+})();
 //////
 
     var RUNTIME_KEY = "LukeToolsRuntime";
