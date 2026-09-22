@@ -77,18 +77,6 @@
     }
 //////
 document.addEventListener("keydown", function (event) {
-    console.log(
-        "[LukeTools Shortcut] keydown",
-        {
-            key: event.key,
-            code: event.code,
-            ctrlKey: event.ctrlKey,
-            shiftKey: event.shiftKey,
-            altKey: event.altKey,
-            target: event.target
-        }
-    );
-
     if (
         event.ctrlKey &&
         event.shiftKey &&
@@ -99,30 +87,37 @@ document.addEventListener("keydown", function (event) {
         event.preventDefault();
         event.stopPropagation();
 
-        if (typeof window.openLukeTools === "function") {
-            console.log("[LukeTools Shortcut] Calling window.openLukeTools()");
-            window.openLukeTools();
-            return;
-        }
+        const buttons = Array.from(
+            document.querySelectorAll("button, [role='button'], [title], [aria-label]")
+        );
 
-        if (
-            window.parent &&
-            typeof window.parent.openLukeTools === "function"
-        ) {
-            console.log("[LukeTools Shortcut] Calling window.parent.openLukeTools()");
-            window.parent.openLukeTools();
+        const lukeToolsButton = buttons.find(function (el) {
+            const text = (
+                (el.innerText || "") + " " +
+                (el.getAttribute("title") || "") + " " +
+                (el.getAttribute("aria-label") || "")
+            ).toLowerCase();
+
+            return text.includes("luketools") || text.includes("luke tools");
+        });
+
+        if (lukeToolsButton) {
+            console.log(
+                "[LukeTools Shortcut] LukeTools button found:",
+                lukeToolsButton
+            );
+
+            lukeToolsButton.click();
+
+            console.log(
+                "[LukeTools Shortcut] LukeTools button clicked"
+            );
+
             return;
         }
 
         console.warn(
-            "[LukeTools Shortcut] Shortcut detected but no openLukeTools function was found",
-            {
-                windowOpenLukeTools: typeof window.openLukeTools,
-                parentOpenLukeTools:
-                    window.parent
-                        ? typeof window.parent.openLukeTools
-                        : "no parent"
-            }
+            "[LukeTools Shortcut] Could not find the LukeTools panel button"
         );
     }
 }, true);
