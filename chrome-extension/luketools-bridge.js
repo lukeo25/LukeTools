@@ -76,16 +76,31 @@
         try { localStorage.removeItem(STORAGE_SEL_IDENTIFIER); } catch (e3) { }
     }
 //////
-   document.addEventListener("keydown", function (event) {
+document.addEventListener("keydown", function (event) {
+    console.log(
+        "[LukeTools Shortcut] keydown",
+        {
+            key: event.key,
+            code: event.code,
+            ctrlKey: event.ctrlKey,
+            shiftKey: event.shiftKey,
+            altKey: event.altKey,
+            target: event.target
+        }
+    );
+
     if (
         event.ctrlKey &&
         event.shiftKey &&
         event.key.toLowerCase() === "l"
     ) {
+        console.log("[LukeTools Shortcut] Ctrl+Shift+L detected");
+
         event.preventDefault();
         event.stopPropagation();
 
         if (typeof window.openLukeTools === "function") {
+            console.log("[LukeTools Shortcut] Calling window.openLukeTools()");
             window.openLukeTools();
             return;
         }
@@ -94,13 +109,25 @@
             window.parent &&
             typeof window.parent.openLukeTools === "function"
         ) {
+            console.log("[LukeTools Shortcut] Calling window.parent.openLukeTools()");
             window.parent.openLukeTools();
             return;
         }
 
-        console.warn("[LukeTools] Ctrl+Shift+L pressed, but LukeTools opener was not found.");
+        console.warn(
+            "[LukeTools Shortcut] Shortcut detected but no openLukeTools function was found",
+            {
+                windowOpenLukeTools: typeof window.openLukeTools,
+                parentOpenLukeTools:
+                    window.parent
+                        ? typeof window.parent.openLukeTools
+                        : "no parent"
+            }
+        );
     }
-}, true); 
+}, true);
+
+console.log("[LukeTools Shortcut] Ctrl+Shift+L listener installed");
 //////
 
     var RUNTIME_KEY = "LukeToolsRuntime";
